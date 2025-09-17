@@ -1,18 +1,7 @@
+/// <reference types="hardhat/types" />
 
-/// <reference types="@nomicfoundation/hardhat-toolbox/internal/type-extensions" />
-/// <reference types="@nomicfoundation/hardhat-toolbox-viem/internal/type-extensions" />
+import "@nomicfoundation/hardhat-toolbox-viem";
 
-import { HardhatEthersHelpers } from "@nomicfoundation/hardhat-ethers/types";
+// Keeping this file ensures TypeScript picks up Hardhat & viem plugin augmentations.
 
-declare module "hardhat/types" {
-  interface HardhatRuntimeEnvironment {
-    ethers: HardhatEthersHelpers;
-  }
-}
 
-// 如果使用 viem
-declare module "hardhat/types" {
-  interface HardhatRuntimeEnvironment {
-    viem: import("@nomicfoundation/hardhat-viem/types").HardhatViemHelpers;
-  }
-}
