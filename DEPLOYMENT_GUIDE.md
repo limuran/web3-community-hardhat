@@ -101,15 +101,15 @@ interface WalletService {
         }
         
         // 2. RPC实时查询
-        const [ethBalance, ydBalance, usdtBalance] = await Promise.all([
+        const [ethBalance, LueBalance, usdtBalance] = await Promise.all([
             provider.getBalance(address),
-            ydToken.balanceOf(address),
+            LueToken.balanceOf(address),
             usdtToken.balanceOf(address)
         ]);
         
         const result = {
             ethBalance: ethers.formatEther(ethBalance),
-            ydBalance: ethers.formatUnits(ydBalance, 0), // YD是整数
+            LueBalance: ethers.formatUnits(LueBalance, 0), // Lue是整数
             usdtBalance: ethers.formatUnits(usdtBalance, 6),
             timestamp: Date.now()
         };
@@ -128,7 +128,7 @@ interface WalletService {
             return cached.amount;
         }
         
-        const allowance = await ydToken.allowance(owner, spender);
+        const allowance = await LueToken.allowance(owner, spender);
         const result = {
             amount: ethers.formatUnits(allowance, 0),
             timestamp: Date.now()
@@ -144,24 +144,24 @@ interface WalletService {
 
 ```typescript
 interface ExchangeService {
-    // YD兑换ETH
-    async exchangeYDToETH(ydAmount: string, userAddress: string) {
+    // Lue兑换ETH
+    async exchangeLueToETH(LueAmount: string, userAddress: string) {
         // 1. 实时余额检查
-        const balance = await ydToken.balanceOf(userAddress);
-        const allowance = await ydToken.allowance(userAddress, EXCHANGE_CONTRACT);
+        const balance = await LueToken.balanceOf(userAddress);
+        const allowance = await LueToken.allowance(userAddress, EXCHANGE_CONTRACT);
         
-        const ydAmountBN = ethers.parseUnits(ydAmount, 0);
+        const LueAmountBN = ethers.parseUnits(LueAmount, 0);
         
-        if (balance < ydAmountBN) {
-            throw new Error('YD余额不足');
+        if (balance < LueAmountBN) {
+            throw new Error('Lue余额不足');
         }
         
-        if (allowance < ydAmountBN) {
+        if (allowance < LueAmountBN) {
             throw new Error('授权额度不足，请先调用approve');
         }
         
         // 2. 执行兑换
-        const tx = await exchangeContract.exchangeYdToEth(ydAmountBN);
+        const tx = await exchangeContract.exchangeLueToEth(LueAmountBN);
         
         // 3. 清除相关缓存
         await redis.del(`balance:${userAddress}`);
@@ -175,18 +175,18 @@ interface ExchangeService {
     
     // 获取实时汇率
     async getExchangeRates() {
-        const [ethToYd, ydToEth, usdtToYd, ydToUsdt] = await Promise.all([
-            exchangeContract.ethToYdRate(),
-            exchangeContract.ydToEthRate(),
-            exchangeContract.usdtToYdRate(),
-            exchangeContract.ydToUsdtRate()
+        const [ethToLue, LueToEth, usdtToLue, LueToUsdt] = await Promise.all([
+            exchangeContract.ethToLueRate(),
+            exchangeContract.LueToEthRate(),
+            exchangeContract.usdtToLueRate(),
+            exchangeContract.LueToUsdtRate()
         ]);
         
         return {
-            ethToYd: ethToYd.toString(),
-            ydToEth: ydToEth.toString(),
-            usdtToYd: usdtToYd.toString(),
-            ydToUsdt: ydToUsdt.toString()
+            ethToLue: ethToLue.toString(),
+            LueToEth: LueToEth.toString(),
+            usdtToLue: usdtToLue.toString(),
+            LueToUsdt: LueToUsdt.toString()
         };
     }
 }
@@ -211,12 +211,12 @@ interface CourseService {
         }
         
         // 3. 检查余额和授权
-        const balance = await ydToken.balanceOf(userAddress);
-        const allowance = await ydToken.allowance(userAddress, COURSE_CONTRACT);
+        const balance = await LueToken.balanceOf(userAddress);
+        const allowance = await LueToken.allowance(userAddress, COURSE_CONTRACT);
         const price = ethers.parseUnits(course.price.toString(), 0);
         
         if (balance < price) {
-            throw new Error('YD余额不足');
+            throw new Error('Lue余额不足');
         }
         
         if (allowance < price) {
@@ -302,7 +302,7 @@ interface TransactionService {
     async getUserTransactionHistory(userAddress: string, options: QueryOptions) {
         const query = `
             query GetUserTransactions($userAddress: String!, $first: Int!, $skip: Int!) {
-                # YD代币转账
+                # Lue代币转账
                 transfers(
                     where: {
                         or: [
@@ -515,7 +515,7 @@ interface CourseListService {
             ...course,
             hasPurchased: !!purchaseStatusMap[course.courseId],
             // 计算其他衍生字段
-            formattedPrice: `${course.price} YD`,
+            formattedPrice: `${course.price} Lue`,
             estimatedTime: this.calculateEstimatedTime(course.modules),
             difficultyLabel: this.getDifficultyLabel(course.difficulty)
         }));
@@ -563,7 +563,7 @@ interface UserStatsService {
                     timestamp
                 }
                 
-                # YD代币交易
+                # Lue代币交易
                 transfers(
                     where: {
                         or: [
@@ -611,8 +611,8 @@ interface UserStatsService {
             averageCompletionRate: this.calculateAverageCompletion(learningProgress),
             
             // 代币统计
-            totalYDEarned: this.calculateEarnedYD(graphResult.data.transfers, userAddress),
-            totalYDSpent: this.calculateSpentYD(graphResult.data.transfers, userAddress),
+            totalLueEarned: this.calculateEarnedLue(graphResult.data.transfers, userAddress),
+            totalLueSpent: this.calculateSpentLue(graphResult.data.transfers, userAddress),
             
             // 时间统计
             firstPurchaseDate: Math.min(...graphResult.data.coursePurchases.map(p => p.timestamp)),
@@ -736,7 +736,7 @@ class DataConsistencyService {
         });
         
         // 监听代币转账事件
-        ydToken.on('Transfer', async (from, to, amount, event) => {
+        LueToken.on('Transfer', async (from, to, amount, event) => {
             await this.handleTokenTransfer({
                 from,
                 to,
